@@ -1,10 +1,10 @@
-import sqlite3
+import psycopg2
 from passlib.context import CryptContext
 
-DB = "/data/database.db"
+DB = "postgresql://postgres:[YOUR-PASSWORD]@db.wdpeoiiuxsovtxqhxrld.supabase.co:5432/postgres"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-conn = sqlite3.connect(DB)
+conn = psycopg2.connect(DB)
 c = conn.cursor()
 
 users = [
@@ -14,27 +14,31 @@ users = [
     ("Dispecer1", "dispecer", "disp1", pwd_context.hash("123")),
     ("Dispecer2", "dispecer", "disp2", pwd_context.hash("123")),
 ]
-c.executemany("INSERT OR IGNORE INTO users (name, role, login, password) VALUES (?, ?, ?, ?)", users)
+for u in users:
+    c.execute("INSERT INTO users (name, role, login, password) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING", u)
 
 cars = [
     ("Škoda Octavia",),
     ("Ford Transit",),
     ("Mercedes Sprinter",)
 ]
-c.executemany("INSERT OR IGNORE INTO cars (name) VALUES (?)", cars)
+for car in cars:
+    c.execute("INSERT INTO cars (name) VALUES (%s) ON CONFLICT DO NOTHING", car)
 
 rides = [
     ("2026-01-20", "08:00", 1, 1, "Praha", "Brno", "navrženo"),
     ("2026-01-20", "09:30", 2, 2, "Ostrava", "Olomouc", "navrženo"),
     ("2026-01-20", "11:00", 3, 3, "Plzeň", "Praha", "navrženo"),
 ]
-c.executemany("INSERT OR IGNORE INTO rides (date, time, car_id, driver_id, start, end, status) VALUES (?, ?, ?, ?, ?, ?, ?)", rides)
+for r in rides:
+    c.execute("INSERT INTO rides (date,time,car_id,driver_id,start,end,status) VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING", r)
 
 ride_changes = [
     (1, "Posun jízdy z 08:00 na 08:30", 4, "čeká na potvrzení"),
     (2, "Změna auta Ford Transit → Mercedes Sprinter", 5, "čeká na potvrzení")
 ]
-c.executemany("INSERT OR IGNORE INTO ride_changes (ride_id, description, changed_by, new_status) VALUES (?, ?, ?, ?)", ride_changes)
+for rc in ride_changes:
+    c.execute("INSERT INTO ride_changes (ride_id, description, changed_by, new_status) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING", rc)
 
 conn.commit()
 conn.close()

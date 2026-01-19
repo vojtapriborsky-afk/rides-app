@@ -2,7 +2,8 @@ from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from passlib.context import CryptContext
 
 app = FastAPI()
@@ -10,55 +11,70 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-DB = "/data/database.db"  # persistentní databáze na Render
+# Supabase connection string – vlož svůj
+DB = "postgresql://postgres:[YOUR-PASSWORD]@db.wdpeoiiuxsovtxqhxrld.supabase.co:5432/postgres"
 
 # --- databáze ---
+def get_db():
+    conn = psycopg2.connect(DB, cursor_factory=RealDictCursor)
+    return conn
+
 def init_db():
-    conn = sqlite3.connect(DB)
+    conn = get_db()
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT,
-                    role TEXT,
-                    login TEXT UNIQUE,
-                    password TEXT
-                 )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS cars (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT
-                 )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS rides (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    date TEXT,
-                    time TEXT,
-                    car_id INTEGER,
-                    driver_id INTEGER,
-                    start TEXT,
-                    end TEXT,
-                    status TEXT
-                 )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS ride_changes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    ride_id INTEGER,
-                    description TEXT,
-                    changed_by INTEGER,
-                    new_status TEXT
-                 )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS confirmations (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    ride_change_id INTEGER,
-                    driver_id INTEGER,
-                    confirmed_at TEXT
-                 )''')
+    # tabulka uživatelů
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        role TEXT,
+        login TEXT UNIQUE,
+        password TEXT
+    )
+    ''')
+    # tabulka aut
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS cars (
+        id SERIAL PRIMARY KEY,
+        name TEXT
+    )
+    ''')
+    # tabulka jízd
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS rides (
+        id SERIAL PRIMARY KEY,
+        date TEXT,
+        time TEXT,
+        car_id INTEGER,
+        driver_id INTEGER,
+        start TEXT,
+        end TEXT,
+        status TEXT
+    )
+    ''')
+    # tabulka změn jízd
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS ride_changes (
+        id SERIAL PRIMARY KEY,
+        ride_id INTEGER,
+        description TEXT,
+        changed_by INTEGER,
+        new_status TEXT
+    )
+    ''')
+    # tabulka potvrzení
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS confirmations (
+        id SERIAL PRIMARY KEY,
+        ride_change_id INTEGER,
+        driver_id INTEGER,
+        confirmed_at TIMESTAMP
+    )
+    ''')
     conn.commit()
     conn.close()
 
 init_db()
-
-def get_db():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 # --- login ---
 @app.get("/login", response_class=HTMLResponse)
@@ -69,7 +85,7 @@ def login_page(request: Request):
 def login(request: Request, username: str = Form(...), password: str = Form(...)):
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE login=?", (username,))
+    c.execute("SELECT * FROM users WHERE login=%s", (username,))
     user = c.fetchone()
     conn.close()
     if user and pwd_context.verify(password, user["password"]):
@@ -98,11 +114,18 @@ def dashboard(request: Request):
     c = conn.cursor()
     
     if role == "driver":
-        c.execute("SELECT rides.*, cars.name as car_name FROM rides LEFT JOIN cars ON rides.car_id=cars.id WHERE driver_id=?", (user_id,))
+        c.execute("""
+            SELECT rides.*, cars.name as car_name FROM rides
+            LEFT JOIN cars ON rides.car_id=cars.id
+            WHERE driver_id=%s
+        """, (user_id,))
         rides = c.fetchall()
         pending_changes = []
     else:
-        c.execute("SELECT rides.*, cars.name as car_name FROM rides LEFT JOIN cars ON rides.car_id=cars.id")
+        c.execute("""
+            SELECT rides.*, cars.name as car_name FROM rides
+            LEFT JOIN cars ON rides.car_id=cars.id
+        """)
         rides = c.fetchall()
         
         c.execute("""
@@ -131,9 +154,11 @@ def confirm_ride(ride_id: int, request: Request):
         return RedirectResponse("/login")
     conn = get_db()
     c = conn.cursor()
-    c.execute("INSERT INTO confirmations (ride_change_id, driver_id, confirmed_at) VALUES (?, ?, datetime('now'))",
-              (ride_id, user_id))
-    c.execute("UPDATE rides SET status='potvrzeno' WHERE id=?", (ride_id,))
+    c.execute("""
+        INSERT INTO confirmations (ride_change_id, driver_id, confirmed_at)
+        VALUES (%s, %s, NOW())
+    """, (ride_id, user_id))
+    c.execute("UPDATE rides SET status='potvrzeno' WHERE id=%s", (ride_id,))
     conn.commit()
     conn.close()
     return RedirectResponse("/", status_code=302)
