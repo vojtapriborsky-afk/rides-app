@@ -2,3 +2,4 @@ fastapi
 uvicorn
 jinja2
 passlib[bcrypt]
+psycopg2-binary
