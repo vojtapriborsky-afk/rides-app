@@ -1,7 +1,7 @@
 import psycopg2
 from passlib.context import CryptContext
 
-DB = "postgresql://postgres:Straznice1+++@db.wdpeoiiuxsovtxqhxrld.supabase.co:5432/postgres"
+DB = "postgres://rides_db_myu5_user:p4oSOKUftm70mQmNuDruYuIRBUnHMK2i@dpg-d5nck00gjchc7399but0-a:5432/rides_db_myu5"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 conn = psycopg2.connect(DB)
@@ -31,7 +31,10 @@ rides = [
     ("2026-01-20", "11:00", 3, 3, "Plzeň", "Praha", "navrženo"),
 ]
 for r in rides:
-    c.execute("INSERT INTO rides (date,time,car_id,driver_id,start,end,status) VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING", r)
+    c.execute("""
+        INSERT INTO rides (date, time, car_id, driver_id, start, end_location, status)
+        VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING
+    """, r)
 
 ride_changes = [
     (1, "Posun jízdy z 08:00 na 08:30", 4, "čeká na potvrzení"),

@@ -48,7 +48,7 @@ def init_db():
         car_id INTEGER,
         driver_id INTEGER,
         start TEXT,
-        end TEXT,
+        end_location TEXT,
         status TEXT
     )
     ''')
@@ -74,7 +74,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-# inicializace databáze při startu
 init_db()
 
 # --- login ---
