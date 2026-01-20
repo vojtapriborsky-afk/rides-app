@@ -11,8 +11,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Supabase connection string – vlož svůj
-DB = "postgresql://postgres:Straznice1+++@db.wdpeoiiuxsovtxqhxrld.supabase.co:5432/postgres"
+# --- ZDE VLOŽ svůj Render PostgreSQL connection string ---
+DB = "postgres://rides_db_myu5_user:p4oSOKUftm70mQmNuDruYuIRBUnHMK2i@dpg-d5nck00gjchc7399but0-a:5432/rides_db_myu5"
 
 # --- databáze ---
 def get_db():
@@ -74,6 +74,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+# inicializace databáze při startu
 init_db()
 
 # --- login ---
