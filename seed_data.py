@@ -1,7 +1,7 @@
 import psycopg2
 from passlib.context import CryptContext
 
-DB = "postgresql://postgres:[Straznice1+++]@db.wdpeoiiuxsovtxqhxrld.supabase.co:5432/postgres"
+DB = "postgresql://postgres:Straznice1+++@db.wdpeoiiuxsovtxqhxrld.supabase.co:5432/postgres"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 conn = psycopg2.connect(DB)

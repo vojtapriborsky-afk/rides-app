@@ -12,7 +12,7 @@ templates = Jinja2Templates(directory="templates")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Supabase connection string – vlož svůj
-DB = "postgresql://postgres:[Straznice1+++]@db.wdpeoiiuxsovtxqhxrld.supabase.co:5432/postgres"
+DB = "postgresql://postgres:Straznice1+++@db.wdpeoiiuxsovtxqhxrld.supabase.co:5432/postgres"
 
 # --- databáze ---
 def get_db():
